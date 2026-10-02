@@ -1,0 +1,56 @@
+# 1. Артефакты сборки CMake и компилятора
+build/
+bin/
+out/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+
+# 2. Скомпилированные объектные и исполняемые файлы
+*.o
+*.obj
+*.exe
+*.out
+*.app
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# Отладочные символы
+*.pdb
+*.idb
+
+# 3. База данных SQLite (генерируется при работе)
+
+data/*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# 4. Настройки IDE и редакторов кода
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# CLion / Rider / JetBrains
+.idea/
+cmake-build-*/
+
+# Visual Studio
+.vs/
+*.sln.docstates
+*.suo
+*.user
+
+# Прочее
+.DS_Store
+Thumbs.db
+*.log
