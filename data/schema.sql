@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS orders (
 
 -- Стартовые данные для проверки
 INSERT OR IGNORE INTO users (id, username, password_hash, role, contacts) VALUES
-    (1, 'admin', 'admin_hash', 'Admin', 'admin@adboard.ru'),
-    (2, 'manager', 'manager_hash', 'Manager', '+7 (900) 111-22-33'),
+    (1, 'admin', 'admin_hash', 'Admin', 'admin@adboard.by'),
+    (2, 'manager', 'manager_hash', 'Manager', '+375(29)111-22-33'),
     (3, 'client', 'client_hash', 'Client', 'client@mail.ru');
 
 INSERT OR IGNORE INTO billboards (id, address, district, surface_type, size, daily_rate, is_active) VALUES
