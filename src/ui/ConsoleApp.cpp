@@ -136,3 +136,17 @@ void ConsoleApp::routeUserSession() {
 }
 
 }
+
+void ConsoleApp::routeUserSession() {
+    if (currentUser_->getRole() == domain::UserRole::Client) {
+        ClientView clientView(currentUser_, billboardService_, bookingService_);
+        clientView.render();
+    } else if (currentUser_->getRole() == domain::UserRole::Manager ||
+               currentUser_->getRole() == domain::UserRole::Admin) {
+        std::cout << "\n[Переход в панель менеджера...]\n";
+        // В Коммите №3 заменить заглушку на ManagerView
+    }
+
+    currentUser_.reset();
+    std::cout << "\nВы вышли из учетной записи.\n";
+}
