@@ -1,16 +1,34 @@
 #include "domain/DateRange.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <stdexcept>
 
 DateRange::DateRange(std::string startDate, std::string endDate)
-    : startDate(std::move(startDate)), endDate(std::move(endDate)) {
-    if (!isValidDate(this->startDate) || !isValidDate(this->endDate)) {
-        throw std::invalid_argument("Дата должна быть в формате YYYY-MM-DD");
-    }
+    : startDate(normalizeDate(startDate)), endDate(normalizeDate(endDate)) {
     if (this->endDate < this->startDate) {
         throw std::invalid_argument("Дата окончания раньше даты начала");
     }
+}
+
+std::string DateRange::toString() const {
+    return toDisplayDate(startDate) + " – " + toDisplayDate(endDate);
+}
+
+std::string DateRange::normalizeDate(const std::string& date) {
+    std::string iso = date;
+    if (date.size() == 10 && date[2] == '.' && date[5] == '.') {
+        iso = date.substr(6, 4) + "-" + date.substr(3, 2) + "-" + date.substr(0, 2);
+    }
+    if (!isValidDate(iso)) {
+        throw std::invalid_argument("Некорректная дата \"" + date + "\" (ожидается ДД.ММ.ГГГГ или ГГГГ-ММ-ДД)");
+    }
+    return iso;
+}
+
+std::string DateRange::toDisplayDate(const std::string& isoDate) {
+    if (isoDate.size() != 10) return isoDate;
+    return isoDate.substr(8, 2) + "." + isoDate.substr(5, 2) + "." + isoDate.substr(0, 4);
 }
 
 int DateRange::getDays() const {
@@ -19,6 +37,13 @@ int DateRange::getDays() const {
 
 bool DateRange::overlaps(const DateRange& other) const {
     return startDate <= other.endDate && other.startDate <= endDate;
+}
+
+std::optional<DateRange> DateRange::intersection(const DateRange& other) const {
+    if (!overlaps(other)) {
+        return std::nullopt;
+    }
+    return DateRange(std::max(startDate, other.startDate), std::min(endDate, other.endDate));
 }
 
 bool DateRange::isValidDate(const std::string& date) {
