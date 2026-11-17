@@ -14,7 +14,7 @@ public:
     ConsoleApp(std::shared_ptr<service::AuthService> authService,
                std::shared_ptr<service::BillboardService> billboardService,
                std::shared_ptr<service::BookingService> bookingService);
-
+        
   void run();
 
     static void clearInputBuffer();
