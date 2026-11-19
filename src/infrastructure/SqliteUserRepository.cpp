@@ -81,7 +81,7 @@ bool SqliteUserRepository::save(const User& user) {
     sqlite3* db = dbManager_.getConnection();
     if (!db) return false;
 
-    const char* sql = "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?);";
+    const char* sql = "INSERT INTO users (username, password_hash, role, contacts) VALUES (?, ?, ?, ?);";
     sqlite3_stmt* stmt = nullptr;
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -94,6 +94,7 @@ bool SqliteUserRepository::save(const User& user) {
     sqlite3_bind_text(stmt, 1, user.getLogin().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 2, user.getPasswordHash().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 3, roleStr.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, user.getContacts().c_str(), -1, SQLITE_TRANSIENT);
 
     int rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
