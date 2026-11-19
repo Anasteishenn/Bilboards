@@ -11,22 +11,26 @@ namespace ui {
 
 class ClientView {
 public:
-    ClientView(std::shared_ptr<domain::User> client,
+    ClientView(std::shared_ptr<User> client,
                std::shared_ptr<service::BillboardService> billboardService,
                std::shared_ptr<service::BookingService> bookingService);
 
     // Главный цикл меню клиента
     void render();
 
+    // Таблица щитов — общая для клиента, менеджера и администратора.
+    static void displayCatalog(const std::vector<Billboard>& billboards, bool showStatus = false);
+    // Таблица заказов; withClient — добавить колонку с ID клиента (для менеджера).
+    static void displayOrders(const std::vector<BookingOrder>& orders, bool withClient);
+
 private:
     void showMenu();
-    void displayCatalog(const std::vector<domain::Billboard>& billboards);
     void handleViewAllBillboards();
     void handleFilterBillboards();
     void handleCreateBooking();
     void handleViewMyOrders();
 
-    std::shared_ptr<domain::User> client_;
+    std::shared_ptr<User> client_;
     std::shared_ptr<service::BillboardService> billboardService_;
     std::shared_ptr<service::BookingService> bookingService_;
 };

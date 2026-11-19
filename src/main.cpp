@@ -1,6 +1,12 @@
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
+
+#include <clocale>
+#include <exception>
 #include <iostream>
 #include <memory>
-#include <exception>
 
 #include "repository/DatabaseManager.hpp"
 #include "infrastructure/SqliteUserRepository.hpp"
@@ -11,19 +17,26 @@
 #include "service/BookingService.hpp"
 #include "ui/ConsoleApp.hpp"
 
+// Composition Root: DatabaseManager -> репозитории -> сервисы -> ConsoleApp.
 int main() {
+#ifdef _WIN32
+    // Кириллица в консоли Windows: ввод и вывод в UTF-8.
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
     std::setlocale(LC_ALL, "");
 
     try {
-        auto dbManager = std::make_shared<repository::DatabaseManager>(
-            "data/adboard.db", 
-            "data/schema.sql"
-        );
-        dbManager->initialize();
+        DatabaseManager dbManager("data/adboard.db");
+        if (!dbManager.initialize("data/schema.sql")) {
+            std::cerr << "\n[КРИТИЧЕСКИЙ СБОЙ СИСТЕМЫ]: не удалось открыть базу данных data/adboard.db "
+                         "или выполнить data/schema.sql. Запускайте программу из папки, где лежит data/.\n";
+            return 1;
+        }
 
-        auto userRepo = std::make_shared<infrastructure::SqliteUserRepository>(dbManager);
-        auto billboardRepo = std::make_shared<infrastructure::SqliteBillboardRepository>(dbManager);
-        auto orderRepo = std::make_shared<infrastructure::SqliteOrderRepository>(dbManager);
+        auto userRepo = std::make_shared<SqliteUserRepository>(dbManager);
+        auto billboardRepo = std::make_shared<SqliteBillboardRepository>(dbManager);
+        auto orderRepo = std::make_shared<SqliteOrderRepository>(dbManager);
 
         auto authService = std::make_shared<service::AuthService>(userRepo);
         auto billboardService = std::make_shared<service::BillboardService>(billboardRepo);

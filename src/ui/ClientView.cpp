@@ -3,12 +3,25 @@
 #include "domain/DateRange.hpp"
 
 #include <iostream>
-#include <iomanip>
+#include <optional>
 #include <stdexcept>
 
 namespace ui {
 
-ClientView::ClientView(std::shared_ptr<domain::User> client,
+namespace {
+
+std::string statusText(OrderStatus status) {
+    switch (status) {
+        case OrderStatus::Pending: return "Ожидает";
+        case OrderStatus::Approved: return "Одобрена";
+        case OrderStatus::Rejected: return "Отклонена";
+    }
+    return orderStatusToString(status);
+}
+
+} // namespace
+
+ClientView::ClientView(std::shared_ptr<User> client,
                        std::shared_ptr<service::BillboardService> billboardService,
                        std::shared_ptr<service::BookingService> bookingService)
     : client_(std::move(client)),
@@ -42,34 +55,62 @@ void ClientView::render() {
 
 void ClientView::showMenu() {
     std::cout << "\n============================================\n"
-              << "   ЛИЧНЫЙ КАБИНЕТ КЛИЕНТА (" << client_->getUsername() << ")\n"
+              << "   ЛИЧНЫЙ КАБИНЕТ КЛИЕНТА (" << client_->getLogin() << ")\n"
               << "============================================\n"
               << "  1. Просмотреть весь каталог щитов\n"
-              << "  2. Поиск и фильтрация щитов (район / бюджет)\n"
+              << "  2. Поиск и фильтрация щитов (район / тип / бюджет)\n"
               << "  3. Оформить заявку на бронирование\n"
               << "  4. Мои заявки и статусы договоров\n"
               << "  0. Выйти из аккаунта\n"
               << "--------------------------------------------\n";
 }
 
-void ClientView::displayCatalog(const std::vector<domain::Billboard>& billboards) {
+void ClientView::displayCatalog(const std::vector<Billboard>& billboards, bool showStatus) {
     if (billboards.empty()) {
         std::cout << "\n  [i] По вашему запросу рекламных конструкций не найдено.\n";
         return;
     }
 
-    std::cout << "\n+------+---------------------------+-----------------+-------------+--------------+\n"
-              << "|  ID  | Адрес                     | Район           | Тип экрана  | Цена (сутки) |\n"
-              << "+------+---------------------------+-----------------+-------------+--------------+\n";
+    const std::string line = showStatus
+        ? "+------+---------------------------+-----------------+-------------+-------+--------------+-----------+\n"
+        : "+------+---------------------------+-----------------+-------------+-------+--------------+\n";
+    std::cout << '\n' << line
+              << "|  ID  | Адрес                     | Район           | Тип экрана  | Размер| Цена (сутки) |"
+              << (showStatus ? " Статус    |" : "") << '\n' << line;
 
     for (const auto& b : billboards) {
-        std::cout << "| " << std::setw(4) << b.getId()
-                  << " | " << std::setw(25) << std::left << b.getAddress().substr(0, 25)
-                  << " | " << std::setw(15) << std::left << b.getDistrict().substr(0, 15)
-                  << " | " << std::setw(11) << std::left << b.getTypeString().substr(0, 11)
-                  << " | " << std::setw(8) << std::right << std::fixed << std::setprecision(2) << b.getDailyPrice() << " BYN |\n";
+        std::cout << "| " << ConsoleApp::fit(std::to_string(b.getId()), 4, true)
+                  << " | " << ConsoleApp::fit(b.getAddress(), 25)
+                  << " | " << ConsoleApp::fit(b.getDistrict(), 15)
+                  << " | " << ConsoleApp::fit(surfaceTypeToString(b.getSurfaceType()), 11)
+                  << " | " << ConsoleApp::fit(b.getSize(), 5)
+                  << " | " << ConsoleApp::fit(ConsoleApp::money(b.getDailyRate()), 8, true) << " BYN |";
+        if (showStatus) {
+            std::cout << ' ' << ConsoleApp::fit(b.isActive() ? "Активен" : "Списан", 9) << " |";
+        }
+        std::cout << '\n';
     }
-    std::cout << "+------+---------------------------+-----------------+-------------+--------------+\n";
+    std::cout << line;
+}
+
+void ClientView::displayOrders(const std::vector<BookingOrder>& orders, bool withClient) {
+    const std::string line = withClient
+        ? "+--------+----------+----------+-------------------------+--------------+------------+\n"
+        : "+--------+----------+-------------------------+--------------+------------+\n";
+    std::cout << '\n' << line << "| Заказ  |" << (withClient ? " Клиент   |" : "")
+              << " ID Щита  | Период аренды           | Сумма (BYN)  | Статус     |\n" << line;
+
+    for (const auto& o : orders) {
+        std::cout << "| #" << ConsoleApp::fit(std::to_string(o.getId()), 5) << " |";
+        if (withClient) {
+            std::cout << " " << ConsoleApp::fit("ID:" + std::to_string(o.getClientId()), 8) << " |";
+        }
+        std::cout << " " << ConsoleApp::fit(std::to_string(o.getBillboardId()), 8)
+                  << " | " << ConsoleApp::fit(o.getPeriod().toString(), 23)
+                  << " | " << ConsoleApp::fit(ConsoleApp::money(o.getTotalPrice()), 12, true)
+                  << " | " << ConsoleApp::fit(statusText(o.getStatus()), 10) << " |\n";
+    }
+    std::cout << line;
 }
 
 void ClientView::handleViewAllBillboards() {
@@ -83,13 +124,21 @@ void ClientView::handleViewAllBillboards() {
 
 void ClientView::handleFilterBillboards() {
     std::cout << "\n--- Фильтрация каталога ---\n";
-    std::string district = ConsoleApp::readLine("Введите район (или '-' для любого): ");
-    double maxPrice = ConsoleApp::readDouble("Максимальная цена за сутки (BYN): ", 0.0);
+    service::BillboardFilter filter;
+    const std::string district = ConsoleApp::readLine("Введите район или его часть (или '-' для любого): ");
+    filter.district = (district == "-") ? "" : district;
+
+    std::cout << "  Тип экрана: 1. Static  2. Digital  3. Prismatron  0. Любой\n";
+    switch (ConsoleApp::readInt("Ваш выбор: ", 0, 3)) {
+        case 1: filter.surfaceType = SurfaceType::Static; break;
+        case 2: filter.surfaceType = SurfaceType::Digital; break;
+        case 3: filter.surfaceType = SurfaceType::Prismatron; break;
+        default: break;
+    }
+    filter.maxDailyRate = ConsoleApp::readDouble("Максимальная цена за сутки, BYN (0 — без ограничения): ", 0.0);
 
     try {
-        std::string districtFilter = (district == "-") ? "" : district;
-        auto filtered = billboardService_->filterBillboards(districtFilter, maxPrice);
-        displayCatalog(filtered);
+        displayCatalog(billboardService_->filterBillboards(filter));
     } catch (const std::exception& ex) {
         std::cout << "\n[Ошибка фильтрации]: " << ex.what() << "\n";
     }
@@ -98,16 +147,37 @@ void ClientView::handleFilterBillboards() {
 void ClientView::handleCreateBooking() {
     std::cout << "\n--- Оформление заявки на аренду ---\n";
     int billboardId = ConsoleApp::readInt("Введите ID рекламного щита: ", 1, 100000);
-    std::string startDate = ConsoleApp::readLine("Дата начала аренды (ГГГГ-ММ-ДД): ");
-    std::string endDate = ConsoleApp::readLine("Дата окончания аренды (ГГГГ-ММ-ДД): ");
+    std::string startDate = ConsoleApp::readDate("Дата начала аренды (ДД.ММ.ГГГГ): ");
+    std::string endDate = ConsoleApp::readDate("Дата окончания аренды (ДД.ММ.ГГГГ): ");
+
+    service::PriceQuote quote;
+    std::optional<DateRange> period;
+    try {
+        period.emplace(startDate, endDate);
+        quote = bookingService_->calculatePrice(client_->getId(), billboardId, *period);
+    } catch (const std::exception& ex) {
+        std::cout << "\n[Отклонено]: " << ex.what() << "\n";
+        return;
+    }
+
+    std::cout << "\n[Расчёт]:\n"
+              << "  - Период: " << period->toString() << "\n"
+              << "  - Длительность: " << quote.days << " сут.\n"
+              << "  - Базовая стоимость: " << ConsoleApp::money(quote.baseCost) << " BYN\n";
+    if (quote.discountAmount > 0.0) {
+        std::cout << "  - " << quote.discountName << " (" << quote.discountPercent << "%): -"
+                  << ConsoleApp::money(quote.discountAmount) << " BYN\n";
+    }
+    std::cout << "  - ИТОГО К ОПЛАТЕ: " << ConsoleApp::money(quote.total) << " BYN\n\n";
+
+    if (!ConsoleApp::confirm("Подтвердить создание заявки?")) {
+        std::cout << "\n[i] Заявка не создана.\n";
+        return;
+    }
 
     try {
-        domain::DateRange period(startDate, endDate);
-        auto order = bookingService_->createBooking(client_->getId(), billboardId, period);
-        std::cout << "\n[ОК] Заявка успешно создана!\n"
-                  << "  Номер договора: #" << order.getId() << "\n"
-                  << "  Продолжительность: " << period.getTotalDays() << " сут.\n"
-                  << "  Итоговая стоимость: " << std::fixed << std::setprecision(2) << order.getTotalCost() << " BYN\n"
+        auto order = bookingService_->createBooking(client_->getId(), billboardId, *period);
+        std::cout << "\n[ОК] Заявка #" << order.getId() << " успешно создана и отправлена менеджеру!\n"
                   << "  Статус: Ожидает подтверждения менеджером\n";
     } catch (const std::exception& ex) {
         std::cout << "\n[Отклонено]: " << ex.what() << "\n";
@@ -121,20 +191,7 @@ void ClientView::handleViewMyOrders() {
             std::cout << "\n  [i] У вас пока нет поданных заявок на бронирование.\n";
             return;
         }
-
-        std::cout << "\n+--------+----------+-------------------------+--------------+----------------+\n"
-                  << "| Заказ  | ID Щита  | Период аренды           | Итого (BYN)  | Статус         |\n"
-                  << "+--------+----------+-------------------------+--------------+----------------+\n";
-
-        for (const auto& o : orders) {
-            std::string periodStr = o.getDateRange().getStartDate() + " - " + o.getDateRange().getEndDate();
-            std::cout << "| #" << std::setw(5) << std::left << o.getId()
-                      << " | " << std::setw(8) << o.getBillboardId()
-                      << " | " << std::setw(23) << periodStr
-                      << " | " << std::setw(12) << std::right << std::fixed << std::setprecision(2) << o.getTotalCost()
-                      << " | " << std::setw(14) << std::left << o.getStatusString() << " |\n";
-        }
-        std::cout << "+--------+----------+-------------------------+--------------+----------------+\n";
+        displayOrders(orders, false);
     } catch (const std::exception& ex) {
         std::cout << "\n[Ошибка получения списка заказов]: " << ex.what() << "\n";
     }
