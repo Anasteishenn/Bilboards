@@ -1,0 +1,57 @@
+@startuml use-case
+' Диаграмма прецедентов AdBoard Core.
+' Готовое изображение — docs/use-case.svg; перегенерировать: plantuml -tsvg docs/use-case.puml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Гость" as Guest
+actor "Клиент" as Client
+actor "Менеджер" as Manager
+actor "Администратор" as Admin
+
+Client -|> Guest
+Manager -|> Guest
+Admin -|> Manager
+
+rectangle "AdBoard Core" {
+  usecase "Регистрация аккаунта" as UC_Register
+  usecase "Авторизация в системе" as UC_Login
+
+  usecase "Просмотр каталога щитов" as UC_Catalog
+  usecase "Фильтрация по району, типу и цене" as UC_Filter
+  usecase "Оформление заявки на аренду" as UC_Book
+  usecase "Просмотр своих заявок" as UC_MyOrders
+
+  usecase "Расчёт стоимости\n(скидки, Strategy)" as UC_Price
+  usecase "Проверка занятости\nдат щита" as UC_Check
+
+  usecase "Просмотр заявок Pending" as UC_Pending
+  usecase "Одобрение / отклонение заявки" as UC_Moderate
+  usecase "Отчёт по занятости и выручке" as UC_Report
+  usecase "Просмотр всех заявок" as UC_AllOrders
+
+  usecase "Добавление конструкции" as UC_Add
+  usecase "Редактирование конструкции" as UC_Edit
+  usecase "Списание конструкции" as UC_Deactivate
+}
+
+Guest --> UC_Register
+Guest --> UC_Login
+
+Client --> UC_Catalog
+Client --> UC_Filter
+Client --> UC_Book
+Client --> UC_MyOrders
+UC_Book ..> UC_Price : <<include>>
+UC_Book ..> UC_Check : <<include>>
+
+Manager --> UC_Pending
+Manager --> UC_Moderate
+Manager --> UC_Report
+Manager --> UC_AllOrders
+UC_Moderate ..> UC_Check : <<include>>
+
+Admin --> UC_Add
+Admin --> UC_Edit
+Admin --> UC_Deactivate
+@enduml
