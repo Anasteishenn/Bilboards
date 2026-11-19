@@ -1,0 +1,50 @@
+name: Build
+
+on:
+  push:
+    branches: [main, dev, "feature/**"]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  linux:
+    name: Linux (GCC)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-Wall -Wextra"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      # Сквозная проверка на чистой базе: вход клиента, заявка, одобрение менеджером,
+      # отказ при пересечении дат. Программа запускается из корня, где лежит data/schema.sql.
+      - name: Smoke test
+        run: |
+          rm -f data/adboard.db
+          printf '%s\n' 1 client client 3 1 10.10.2026 20.10.2026 y 0 \
+                        1 manager manager 2 1 1 0 \
+                        1 client client 3 1 15.10.2026 25.10.2026 0 0 \
+            | ./build/adboard | tee out.txt
+          grep -q "Добро пожаловать, client" out.txt
+          grep -q "ИТОГО К ОПЛАТЕ: 627.00 BYN" out.txt
+          grep -q "Заявка #1 одобрена" out.txt
+          grep -q "Щит #1 уже занят с 10.10.2026 по 20.10.2026" out.txt
+
+  windows:
+    name: Windows (MinGW)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Smoke run
+        shell: bash
+        run: printf '%s\n' 1 admin admin 0 0 | ./build/adboard.exe
