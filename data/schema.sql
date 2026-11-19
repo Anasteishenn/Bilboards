@@ -33,11 +33,10 @@ CREATE TABLE IF NOT EXISTS orders (
     FOREIGN KEY (billboard_id) REFERENCES billboards(id)
 );
 
--- Стартовые данные для проверки
 INSERT OR IGNORE INTO users (id, username, password_hash, role, contacts) VALUES
-    (1, 'admin', 'admin_hash', 'Admin', 'admin@adboard.ru'),
-    (2, 'manager', 'manager_hash', 'Manager', '+7 (900) 111-22-33'),
-    (3, 'client', 'client_hash', 'Client', 'client@mail.ru');
+    (1, 'admin', '68577352b08d4449', 'Admin', 'admin@adboard.by'),
+    (2, 'manager', '8e07a345d1f73659', 'Manager', '+375 (29) 111-22-33'),
+    (3, 'client', '1240781ba5c634cb', 'Client', 'client@mail.ru');
 
 INSERT OR IGNORE INTO billboards (id, address, district, surface_type, size, daily_rate, is_active) VALUES
     (1, 'пр. Независимости, 4', 'Московский', 'Digital', '6x3', 60.0, 1),
