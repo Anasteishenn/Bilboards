@@ -96,6 +96,7 @@ cmake --build build
 | [docs/use-case.svg](docs/use-case.svg) | Диаграмма прецедентов (исходник — [docs/use-case.puml](docs/use-case.puml)) |
 | [docs/sequence-diagrams.md](docs/sequence-diagrams.md) | Диаграммы последовательности: вход, оформление заявки, одобрение, отчёт |
 | [docs/core-domain.md](docs/core-domain.md) | Диаграмма классов ядра, паттерн Strategy, алгоритм проверки пересечения дат |
+| [docs/database.md](docs/database.md) | ER-диаграмма, описание таблиц, паттерн Repository, целостность данных |
 
 ![Диаграмма прецедентов](docs/use-case.svg)
 
