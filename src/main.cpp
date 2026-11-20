@@ -21,10 +21,14 @@
 int main() {
 #ifdef _WIN32
     // Кириллица в консоли Windows: ввод и вывод в UTF-8.
+    // Локаль тоже UTF-8: системная ("" = Windows-1251 на русской Windows) заставила бы
+    // CRT перекодировать UTF-8-строки как 1251, и вывод превратился бы в «РЎРРЎ…».
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
-#endif
+    std::setlocale(LC_ALL, ".UTF-8");
+#else
     std::setlocale(LC_ALL, "");
+#endif
 
     try {
         DatabaseManager dbManager("data/adboard.db");
